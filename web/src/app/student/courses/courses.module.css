@@ -1,0 +1,94 @@
+.page {
+  padding: 2rem;
+  min-height: 100vh;
+  width:100%;
+  background: linear-gradient(160deg, #111, #222); /* dark background */
+  color: white;
+}
+
+/* Section Titles */
+.sectionTitle {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  background: linear-gradient(135deg, #ff7b00, #ff9500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Course Card */
+.courseCard {
+  color: white;
+  background: linear-gradient(135deg, #1c1c1c, #2e2e2e);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.courseCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+
+/* Text inside card */
+.courseText {
+  flex-grow: 1;
+  margin-right: 1rem;
+}
+
+/* Title in orange */
+.courseTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ff7b00;
+  margin-bottom: 0.25rem;
+}
+
+/* Description in white */
+.courseDescription {
+  font-size: 0.9rem;
+  color: #ffffff;
+  opacity: 0.85;
+  line-height: 1.4;
+}
+
+/* Enroll Button */
+.enrollButton {
+  background: linear-gradient(135deg, #ff7b00, #ff9500) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 8px 16px !important;
+  text-transform: none !important;
+  transition: all 0.25s ease !important;
+}
+
+.enrollButton:hover {
+  background: linear-gradient(135deg, #ff9500, #ff7b00) !important;
+  transform: scale(1.05);
+}
+
+.enrollButton:disabled {
+  background: #444 !important;
+  color: #bbb !important;
+  cursor: not-allowed;
+}
+
+/* Link-styled text */
+.linkText {
+  color: #ff7b00;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.linkText:hover {
+  color: #ff9500;
+}

@@ -6,6 +6,12 @@ const CourseSchema = new mongoose.Schema({
   description: String,
   teacher: { type: ObjectId, ref: 'User', required: true },
   students: [{ type: ObjectId, ref: 'User' }],
+  
+  // --- NEW FIELD ADDED ---
+  // Price in the smallest currency unit (e.g., paise for INR)
+  // 1000 = ₹10.00
+  price: { type: Number, required: true, default: 0 },
+  
   published: { type: Boolean, default: false }
 }, { timestamps: true });
 

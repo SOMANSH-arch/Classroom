@@ -1,0 +1,124 @@
+/* Container page background */
+.container {
+  padding:2rem 0;
+  min-height: 100vh;
+  background: linear-gradient(160deg, #111, #222);
+  color: white;
+}
+
+/* Section title */
+.title {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  background: linear-gradient(135deg, #ff7b00, #ff9500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Course selector dropdown */
+.selector :global(.MuiOutlinedInput-root) {
+  background: #333;
+  border-radius: 8px;
+  color: white; /* text inside select in white */
+}
+
+.selector :global(.MuiSelect-select) {
+  color: white !important; /* force selected value text white */
+}
+
+.selector :global(.MuiInputLabel-root) {
+  color: #bbb;
+}
+
+.selector :global fieldset {
+  border-color: #555;
+}
+
+.selector :global(.Mui-focused fieldset) {
+  border-color: #ff7b00;
+  box-shadow: 0 0 6px rgba(255, 123, 0, 0.6);
+}
+
+.selector :global(.MuiSvgIcon-root) {
+  color: white;
+}
+
+.selector :global(.MuiPaper-root) {
+  background: #222 !important;
+  color: white !important;
+}
+
+.selector :global(.MuiMenuItem-root:hover) {
+  background: #333 !important;
+  color: #ff7b00 !important;
+}
+/* Assignment card */
+.assignment {
+  background: linear-gradient(160deg, #1c1c1c, #2a2a2a);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+  margin-bottom: 1rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  animation: fadeIn 0.5s ease;
+}
+.assignment:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+}
+.assignment :global(.MuiListItemText-secondary) {
+  color: #fff !important;
+}
+
+/* Submission text area */
+.textarea :global(.MuiInputBase-root) {
+  background: #333;
+  border-radius: 8px;
+  color: white;
+}
+.textarea :global(.MuiOutlinedInput-notchedOutline) {
+  border-color: #555;
+}
+.textarea :global(.Mui-focused .MuiOutlinedInput-notchedOutline) {
+  border-color: #ff7b00;
+  box-shadow: 0 0 6px rgba(255, 123, 0, 0.6);
+}
+
+/* File input */
+.fileInput {
+  margin: 0.5rem 0 1rem;
+  color: #ff7b00;
+  font-weight: 500;
+}
+
+/* Orange gradient button */
+.button {
+  background: linear-gradient(135deg, #ff7b00, #ff9500) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  padding: 0.6rem 1.2rem !important;
+  border-radius: 8px !important;
+  text-transform: none !important;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+.button:hover {
+  opacity: 0.9;
+  transform: scale(1.03);
+}
+
+/* Override Chip style for "Already Submitted" */
+.assignment :global(.MuiChip-root) {
+  background: transparent !important;
+  border: 1px solid #ff7b00 !important;
+  color: #ff7b00 !important;
+  font-weight: 600 !important;
+}
+
+/* Fade in effect */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}

@@ -1,0 +1,110 @@
+.page {
+  padding: 2rem;
+  min-height: 100vh;
+  background: linear-gradient(160deg, #111, #222);
+  color: white;
+}
+
+/* Section Title */
+.sectionTitle {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  background: linear-gradient(135deg, #ff7b00, #ff9500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Create Course Form */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 420px;
+  margin: 0 auto 2rem auto;
+  background: linear-gradient(135deg, #1c1c1c, #2e2e2e);
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+/* Inputs */
+.form :global(.MuiInputBase-root) {
+  background: #333;
+  border-radius: 8px;
+  color: white;
+}
+
+.form :global(.MuiInputLabel-root) {
+  color: #bbb;
+}
+
+.form :global(.MuiOutlinedInput-notchedOutline) {
+  border-color: #555;
+}
+
+.form :global(.Mui-focused .MuiOutlinedInput-notchedOutline) {
+  border-color: #ff7b00;
+}
+
+/* Gradient Button */
+.button {
+  background: linear-gradient(135deg, #ff7b00, #ff9500) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  border-radius: 8px !important;
+  transition: opacity 0.3s ease;
+}
+
+.button:hover {
+  opacity: 0.9;
+}
+
+/* Course Card */
+.courseCard {
+  color: white;
+  background: linear-gradient(135deg, #1c1c1c, #2e2e2e);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.courseCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+
+.courseTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ff7b00;
+  margin-bottom: 0.25rem;
+}
+
+.courseDescription {
+  font-size: 0.9rem;
+  color: #fff;
+  opacity: 0.85;
+}
+
+/* Publish button (outlined variant styled) */
+.publishButton {
+  border: 1px solid #ff7b00 !important;
+  color: #ff7b00 !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  text-transform: none !important;
+  transition: all 0.25s ease !important;
+}
+
+.publishButton:hover {
+  background: linear-gradient(135deg, #ff7b00, #ff9500) !important;
+  color: white !important;
+}

@@ -1,0 +1,28 @@
+/* variables.css */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+
+  --primary: #2563eb;
+  --primary-dark: #1e40af;
+  --secondary: #f3f4f6;
+  --accent: #f59e0b;
+
+  --border-radius: 8px;
+  --spacing: 1rem;
+
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-mono: "Courier New", Courier, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+
+    --primary: #3b82f6;
+    --primary-dark: #1e3a8a;
+    --secondary: #1f2937;
+    --accent: #fbbf24;
+  }
+}

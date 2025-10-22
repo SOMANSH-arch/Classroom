@@ -13,6 +13,8 @@ import assignmentRoutes from './routes/assignment.routes.js';
 import submissionRoutes from './routes/submission.routes.js';
 import aiRoutes from './routes/ai.routes.js';
 
+import paymentRoutes from './routes/payment.routes.js';
+
 const app = express();
 
 // --- CORS (with credentials for cookies) ---
@@ -41,6 +43,8 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/ai', aiRoutes);
+
+app.use('/api/payment', paymentRoutes);
 
 // --- Start Server after DB connection ---
 const port = process.env.PORT || 4000;

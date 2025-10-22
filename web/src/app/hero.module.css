@@ -1,0 +1,83 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: url("./hero.jpg") no-repeat center center ;
+  background-size: cover;
+  color: white;
+  text-align: center;
+  padding: 2rem;
+}
+
+.hero {
+  max-width: 700px;
+  animation: fadeIn 0.8s ease-in-out;
+  background: rgba(0, 0, 0, 0);
+  padding: 2rem;
+  border-radius: 12px;
+}
+
+.title {
+  font-size: 3rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ff7b00, #ff9500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 1rem;
+}
+
+.subtitle {
+  font-size: 1.3rem;
+  margin-bottom: 2rem;
+  color: #ddd;
+}
+
+.subtitle span {
+  color: #ff9500;
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.button {
+  background: linear-gradient(135deg, #ff7b00, #ff9500);
+  color: white;
+  font-weight: 600;
+  padding: 0.8rem 2rem;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.button:hover {
+  opacity: 0.9;
+  transform: scale(1.05);
+}
+
+.buttonOutline {
+  background: transparent;
+  border: 2px solid #ff7b00;
+  color: #ff7b00;
+  font-weight: 600;
+  padding: 0.8rem 2rem;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.buttonOutline:hover {
+  background: #ff7b00;
+  color: white;
+  transform: scale(1.05);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}

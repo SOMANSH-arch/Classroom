@@ -1,0 +1,91 @@
+/* Dashboard container */
+.dashboard {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: linear-gradient(160deg, #111, #222); /* black/gray gradient */
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  transition: transform 0.2s ease;
+  color: white;
+}
+
+.dashboard:hover {
+  transform: translateY(-4px);
+}
+
+/* Welcome text with orange gradient */
+.welcome {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  background: linear-gradient(135deg, #ff7b00, #ff9500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Navigation */
+.nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.nav li {
+  display: flex;
+}
+
+/* Nav links styled as cards */
+.nav a {
+  flex: 1;
+  text-decoration: none;
+  font-weight: 500;
+  color: white;
+  background: #333;
+  padding: 1rem;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  font-size: 1.1rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.nav a:hover {
+  background: linear-gradient(135deg, #ff7b00, #ff9500);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(255, 123, 0, 0.4);
+}
+
+/* Logout button */
+.logout {
+  margin-top: 2rem;
+  width: 100%;
+  background: linear-gradient(135deg, #ff7b00, #ff9500);
+  color: white;
+  border: none;
+  padding: 0.9rem 1.5rem;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: opacity 0.3s ease, transform 0.2s ease;
+}
+
+.logout:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+/* Loading / Not signed in messages */
+.loading,
+.notSignedIn {
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.2rem;
+  background: linear-gradient(135deg, #ff7b00, #ff9500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

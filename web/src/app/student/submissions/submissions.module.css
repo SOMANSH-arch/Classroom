@@ -1,0 +1,77 @@
+.container {
+  min-height: 100vh;
+  background: linear-gradient(160deg, #0a0a0a, #1a1a1a);
+  color: white;
+  padding: 2rem;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* Page title */
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, #ff7b00, #ff9500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Card */
+.card {
+  background: linear-gradient(160deg, #111, #222);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+  margin-bottom: 1.5rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.7);
+}
+
+/* Subtitle inside card */
+.subtitle {
+  font-weight: 600;
+  color: #ff9500;
+  margin-bottom: 0.5rem;
+}
+
+/* Normal text */
+.text {
+  color: #f0f0f0;
+  margin-bottom: 0.5rem;
+}
+
+/* Muted text */
+.textMuted {
+  color: #aaa;
+}
+
+/* File link */
+.link {
+  color: #ff9500;
+  text-decoration: none;
+}
+.link:hover {
+  text-decoration: underline;
+}
+
+/* Divider */
+.divider {
+  background-color: #444 !important;
+  margin: 1rem 0 !important;
+}
+
+/* Highlighted messages like "Loading..." and "No submissions yet" */
+.highlight {
+  font-size: 1.2rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #ff7b00, #ff9500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-top: 2rem;
+  text-align: center;
+}

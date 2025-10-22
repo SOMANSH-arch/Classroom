@@ -1,0 +1,73 @@
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 1rem;
+  background: linear-gradient(160deg, #111, #222); /* black/gray gradient card */
+}
+
+.card {
+  background: linear-gradient(160deg, #222, #1a1a1a, #111); /* Dark card */
+  color: #ffffff;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 420px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+.title {
+  text-align: center;
+  margin-bottom: 1rem;
+  font-size: 1.6rem;
+  font-weight: bold;
+  background: linear-gradient(90deg, #ff8c00, #ff3d00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.input {
+  background: #222 !important;
+  border-radius: 8px;
+  color: #ffffff !important;
+}
+
+.input label,
+.input input {
+  color: #ffffff !important;
+}
+
+.button {
+  background: linear-gradient(90deg, #ff8c00, #ff3d00) !important;
+  color: #fff !important;
+  font-weight: bold;
+  border-radius: 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 61, 0, 0.6);
+}
+
+.linkText {
+  text-align: center;
+  margin-top: 1rem;
+  color: #333;
+}
+
+.linkText a {
+  color: #ff8c00;
+  text-decoration: none;
+  font-weight: bold;
+}
+.linkText a:hover {
+  text-decoration: underline;
+}

@@ -1,0 +1,68 @@
+/* ===== Base Reset ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  min-height: 100%;
+  background: linear-gradient(160deg, #111, #222);
+  color: white;
+  font-family: 'Inter', sans-serif;
+}
+
+/* ===== Layout ===== */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-main {
+  flex: 1;
+  padding: 2rem;
+}
+
+/* ===== Header ===== */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: #111;
+  border-bottom: 1px solid #222;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #ff7b00, #ff9500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.nav-link {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  background: #1c1c1c;
+  color: #ff7b00;
+  border: 1px solid #333;
+}
+
+.nav-link:hover {
+  background: #222;
+}
+
+.nav-link.active {
+  background: linear-gradient(135deg, #ff7b00, #ff9500);
+  color: white;
+  border: none;
+}
