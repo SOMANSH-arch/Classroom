@@ -108,3 +108,31 @@
   background: linear-gradient(135deg, #ff7b00, #ff9500) !important;
   color: white !important;
 }
+
+.courseCardClickable {
+  /* --- Here are the changes --- */
+  background-color: #2d2d2d;  /* Dark background to match form */
+  color: #eee;                 /* Light text for the description */
+  border: 1px solid #444;   /* Subtle border instead of shadow */
+  box-shadow: none;             /* Remove the old shadow */
+
+  /* --- These are the same as before --- */
+  border-radius: 8px;
+  margin-bottom: 20px;
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.courseCardClickable:hover {
+  /* --- Updated hover effect for dark mode --- */
+  background-color: #3a3a3a; /* Make it slightly lighter */
+  border-color: #555;         /* Make border slightly lighter */
+
+  /* --- Same as before --- */
+  transform: translateY(-2px);
+}
+

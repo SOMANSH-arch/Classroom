@@ -132,10 +132,14 @@ export default function StudentCoursesPage() {
             
             {/* 4. --- MODIFIED BUTTON & PRICE DISPLAY --- */}
             <Box style={{ textAlign: 'right', marginLeft: 'auto', flexShrink: 0 }}>
-              <Typography variant="h6" component="div">
+              
+              {/* --- THIS IS THE MODIFIED LINE --- */}
+              <Typography variant="h6" component="div" className={styles.priceGradient}>
                 {formatPrice(course.price)}
               </Typography>
+              
               <Button
+                sx={{ ml: 1 }}
                 className={styles.enrollButton}
                 onClick={() => handleEnroll(course)} // Pass the whole course object
                 disabled={enrolledCourses.some(c => c._id === course._id)}

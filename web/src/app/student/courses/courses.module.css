@@ -92,3 +92,21 @@
 .linkText:hover {
   color: #ff9500;
 }
+
+/* ... all your other styles ... */
+
+.priceGradient {
+  /* --- An orange gradient --- */
+  /* If you have an existing gradient variable, use it here instead */
+  padding-right: 10;
+  background: linear-gradient(45deg, #f39c12, #e67e22);
+  
+  /* --- The CSS trick to make text a gradient --- */
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  
+  /* Make it stand out more */
+  font-weight: 700;
+  display: inline-block; /* Good practice for this effect */
+}

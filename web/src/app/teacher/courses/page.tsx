@@ -3,11 +3,21 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { Box, Button, Container, TextField, Typography, List, ListItem } from '@mui/material';
 import styles from "./teacherCourses.module.css";
+import { useRouter } from 'next/navigation'; // <-- 1. IMPORT useRouter
+
+// Helper function
+const formatPrice = (priceInPaise: number) => {
+  if (priceInPaise == null || priceInPaise === 0) return "Free";
+  const priceInRupees = (priceInPaise / 100).toFixed(2);
+  return `₹${priceInRupees}`;
+};
 
 export default function TeacherCoursesPage() {
   const [courses, setCourses] = useState<any[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const router = useRouter(); // <-- 2. INITIALIZE useRouter
 
   const loadCourses = async () => {
     try {
@@ -20,25 +30,44 @@ export default function TeacherCoursesPage() {
 
   const createCourse = async () => {
     try {
+      const priceInPaise = Math.round(parseFloat(price) * 100);
+      
+      if (isNaN(priceInPaise) || priceInPaise < 0) {
+         alert('Please enter a valid price (0 or more).');
+         return;
+      }
+
       await api('/api/courses', {
         method: 'POST',
-        body: JSON.stringify({ title, description })
+        body: JSON.stringify({ 
+          title, 
+          description, 
+          price: priceInPaise
+        })
       });
+      
       setTitle('');
       setDescription('');
+      setPrice('');
       loadCourses();
     } catch (err) {
       console.error(err);
     }
   };
 
-  const publishCourse = async (id: string) => {
+  const publishCourse = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation(); // <-- Stop the click from navigating
     try {
       await api(`/api/courses/${id}/publish`, { method: 'PATCH' });
       loadCourses();
     } catch (err) {
       console.error(err);
     }
+  };
+
+  // 3. --- ADDED NAVIGATION FUNCTION ---
+  const handleCourseClick = (courseId: string) => {
+    router.push(`/teacher/courses/${courseId}`);
   };
 
   useEffect(() => {
@@ -64,6 +93,13 @@ export default function TeacherCoursesPage() {
           onChange={(e) => setDescription(e.target.value)}
           multiline
         />
+        <TextField
+          label="Price (in ₹)"
+          type="number"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          placeholder="e.g., 100.00 (Enter 0 for free)"
+        />
         <Button className={styles.button} onClick={createCourse}>
           Create Course
         </Button>
@@ -72,7 +108,12 @@ export default function TeacherCoursesPage() {
       {/* List Courses */}
       <List>
         {courses.map(course => (
-          <ListItem key={course._id} className={styles.courseCard}>
+          // 4. --- ADDED onClick HANDLER TO ListItem ---
+          <ListItem 
+            key={course._id} 
+            className={styles.courseCardClickable} // Using a new style
+            onClick={() => handleCourseClick(course._id)}
+          >
             <Box>
               <div className={styles.courseTitle}>
                 {course.title} {course.published ? '(Published)' : '(Draft)'}
@@ -81,14 +122,20 @@ export default function TeacherCoursesPage() {
                 {course.description}
               </div>
             </Box>
-            {!course.published && (
-              <Button
-                className={styles.publishButton}
-                onClick={() => publishCourse(course._id)}
-              >
-                Publish
-              </Button>
-            )}
+            
+            <Box style={{ textAlign: 'right', marginLeft: 'auto', flexShrink: 0 }}>
+              <Typography variant="h6" component="div">
+                {formatPrice(course.price)}
+              </Typography>
+              {!course.published && (
+                <Button
+                  className={styles.publishButton}
+                  onClick={(e) => publishCourse(e, course._id)} // Pass 'e'
+                >
+                  Publish
+                </Button>
+              )}
+            </Box>
           </ListItem>
         ))}
       </List>
