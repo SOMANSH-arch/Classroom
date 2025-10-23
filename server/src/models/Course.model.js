@@ -7,12 +7,17 @@ const CourseSchema = new mongoose.Schema({
   teacher: { type: ObjectId, ref: 'User', required: true },
   students: [{ type: ObjectId, ref: 'User' }],
   
-  // --- NEW FIELD ADDED ---
-  // Price in the smallest currency unit (e.g., paise for INR)
-  // 1000 = ₹10.00
   price: { type: Number, required: true, default: 0 },
   
-  published: { type: Boolean, default: false }
+  published: { type: Boolean, default: false },
+
+  // --- NEW FIELD ADDED ---
+  materials: [{
+    title: { type: String, required: true },
+    description: String,
+    createdAt: { type: Date, default: Date.now }
+  }]
+
 }, { timestamps: true });
 
 export default mongoose.model('Course', CourseSchema);
