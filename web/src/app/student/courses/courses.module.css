@@ -110,3 +110,31 @@
   font-weight: 700;
   display: inline-block; /* Good practice for this effect */
 }
+
+/* ... all your other styles ... */
+
+.enrolledCourseCard {
+  /* Dark background to match theme */
+  background-color: #2d2d2d;
+  color: #eee;
+  border: 1px solid #444;
+  box-shadow: none;
+  
+  /* Layout */
+  border-radius: 8px;
+  margin-bottom: 20px;
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  /* Clickable styles */
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.enrolledCourseCard:hover {
+  background-color: #3a3a3a;
+  border-color: #555;
+  transform: translateY(-2px);
+}

@@ -1,38 +1,63 @@
 import { Router } from 'express';
+import mongoose from 'mongoose';
+import fs from 'fs'; // Still needed for potential cleanup if things go wrong
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import Course from '../models/Course.model.js';
-import User from '../models/User.model.js'; // <-- 1. IMPORT USER MODEL
-import { Resend } from 'resend'; // <-- 2. IMPORT RESEND
+import User from '../models/User.model.js';
+import { Resend } from 'resend';
+import { uploadMaterial } from '../middleware/upload.js'; // Import upload middleware
+import multer from 'multer'; // Import multer to handle its errors
+import { v2 as cloudinary } from 'cloudinary'; // Import Cloudinary
 
 const router = Router();
-const resend = new Resend(process.env.RESEND_API_KEY); // <-- 3. INITIALIZE RESEND
-console.log('Checking Resend API Key (should say "Yes"):', process.env.RESEND_API_KEY ? 'Yes' : 'No');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// --- All your existing routes (create, publish, list, get, update) stay here ---
+// --- Configure Cloudinary ---
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true, // Use https
+});
+
+// --- Helper function to upload buffer to Cloudinary ---
+const uploadToCloudinary = (fileBuffer, options) => {
+    return new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_stream(options, (error, result) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(result);
+            }
+        }).end(fileBuffer);
+    });
+};
+
 
 /**
  * Teacher: create a new course
  */
 router.post('/', requireAuth, requireRole('teacher'), async (req, res) => {
   const { title, description, price } = req.body || {};
-  
   if (!title) {
     return res.status(400).json({ message: 'Title is required' });
   }
-
   const priceInPaise = Number(price);
   if (isNaN(priceInPaise) || priceInPaise < 0) {
     return res.status(400).json({ message: 'A valid price (0 or more) is required' });
   }
-
-  const c = await Course.create({
-    title,
-    description,
-    price: priceInPaise,
-    teacher: req.user.sub
-  });
-
-  res.status(201).json({ course: c });
+  try {
+    const c = await Course.create({
+      title,
+      description,
+      price: priceInPaise,
+      teacher: req.user.sub
+    });
+    res.status(201).json({ course: c });
+  } catch (error) {
+     console.error("Error creating course:", error);
+     res.status(500).json({ message: 'Internal Server Error' });
+  }
 });
 
 /**
@@ -40,21 +65,32 @@ router.post('/', requireAuth, requireRole('teacher'), async (req, res) => {
  */
 router.patch('/:id/publish', requireAuth, requireRole('teacher'), async (req, res) => {
   const { id } = req.params;
-  const c = await Course.findOneAndUpdate(
-    { _id: id, teacher: req.user.sub },
-    { published: true },
-    { new: true }
-  );
-  if (!c) return res.status(404).json({ message: 'Not found' });
-  res.json({ course: c });
+  try {
+     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid Course ID' });
+    const c = await Course.findOneAndUpdate(
+      { _id: id, teacher: req.user.sub },
+      { published: true },
+      { new: true }
+    );
+    if (!c) return res.status(404).json({ message: 'Course not found or not owned' });
+    res.json({ course: c });
+  } catch(error) {
+      console.error("Error publishing course:", error);
+      res.status(500).json({ message: 'Internal Server Error' });
+  }
 });
 
 /**
  * Teacher: list their own courses (published or draft)
  */
 router.get('/my', requireAuth, requireRole('teacher'), async (req, res) => {
-  const list = await Course.find({ teacher: req.user.sub }).sort({ createdAt: -1 });
-  res.json({ courses: list });
+  try {
+    const list = await Course.find({ teacher: req.user.sub }).sort({ createdAt: -1 });
+    res.json({ courses: list });
+   } catch(error) {
+      console.error("Error fetching teacher courses:", error);
+      res.status(500).json({ message: 'Internal Server Error' });
+   }
 });
 
 /**
@@ -63,12 +99,14 @@ router.get('/my', requireAuth, requireRole('teacher'), async (req, res) => {
 router.get('/:id/my', requireAuth, requireRole('teacher'), async (req, res) => {
   try {
     const { id } = req.params;
-    // We use .populate() here to get the material details
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: 'Invalid Course ID' });
+    }
     const c = await Course.findOne({ _id: id, teacher: req.user.sub });
-    if (!c) return res.status(404).json({ message: 'Course not found' });
+    if (!c) return res.status(404).json({ message: 'Course not found or not owned' });
     res.json({ course: c });
   } catch (error) {
-    console.error('Error fetching course:', error);
+    console.error('Error fetching single teacher course:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -79,6 +117,9 @@ router.get('/:id/my', requireAuth, requireRole('teacher'), async (req, res) => {
 router.put('/:id', requireAuth, requireRole('teacher'), async (req, res) => {
   try {
     const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: 'Invalid Course ID' });
+    }
     const { title, description, price } = req.body;
 
     if (!title) {
@@ -98,7 +139,6 @@ router.put('/:id', requireAuth, requireRole('teacher'), async (req, res) => {
     if (!updatedCourse) {
       return res.status(404).json({ message: 'Course not found or you do not own it' });
     }
-
     res.json({ message: 'Course updated!', course: updatedCourse });
   } catch (error) {
     console.error('Error updating course:', error);
@@ -107,138 +147,205 @@ router.put('/:id', requireAuth, requireRole('teacher'), async (req, res) => {
 });
 
 /**
- * Public: list published courses (anyone can see)
+ * Student: get a single course they are enrolled in
  */
-router.get('/', async (_req, res) => {
-  const list = await Course.find({ published: true })
-    .populate('teacher', 'name')
-    .sort({ createdAt: -1 });
-  res.json({ courses: list });
+router.get('/:id/student-details', requireAuth, requireRole('student'), async (req, res) => {
+  try {
+    const { id } = req.params;
+     if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: 'Invalid Course ID' });
+    }
+    const userId = req.user.sub;
+    const course = await Course.findOne({ _id: id, students: userId });
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found or you are not enrolled' });
+    }
+    res.json({ course });
+  } catch (error) {
+    console.error('Error fetching course for student:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
 });
 
 /**
- * Student: enroll in a published course (Original - will be removed later)
+ * Teacher: Upload Material File to Cloudinary
+ */
+router.post(
+  '/:id/materials/upload',
+  requireAuth,
+  requireRole('teacher'),
+  uploadMaterial.single('materialFile'), // Use multer memory storage
+  async (req, res) => {
+    try {
+        if (!req.file) {
+          return res.status(400).json({ message: 'No file uploaded or invalid file type.' });
+        }
+         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({ message: 'Invalid Course ID.' });
+         }
+        // Verify course ownership
+        const course = await Course.findOne({ _id: req.params.id, teacher: req.user.sub });
+        if (!course) {
+           return res.status(404).json({ message: 'Course not found or not owned by user.' });
+        }
+
+        // --- Upload file buffer to Cloudinary ---
+        const uploadOptions = {
+            resource_type: "raw", // Treat as raw file (PDF)
+            folder: `innodeed-classroom/materials/${course._id}`, // Organize in folders
+            public_id: `${Date.now()}-${req.file.originalname.split('.')[0]}`, // Unique name
+        };
+
+        const result = await uploadToCloudinary(req.file.buffer, uploadOptions);
+
+        if (!result || !result.secure_url) {
+            throw new Error('Cloudinary upload failed');
+        }
+
+        // Send back the Cloudinary URL and original name
+        res.status(201).json({
+          message: 'File uploaded successfully to Cloudinary',
+          filePath: result.secure_url, // This is the public URL
+          fileName: req.file.originalname,
+          cloudinaryPublicId: result.public_id // Store this if you want to delete later
+        });
+
+    } catch(error) {
+        console.error("Error during Cloudinary file upload:", error);
+        res.status(500).json({ message: `Internal server error during file upload: ${error.message || error}` });
+    }
+  },
+  // --- Multer Error Handler ---
+  (error, req, res, next) => {
+    if (error instanceof multer.MulterError) {
+      return res.status(400).json({ message: `File upload error: ${error.message}` });
+    } else if (error) {
+      return res.status(400).json({ message: error.message });
+    }
+    next();
+  }
+);
+
+
+/**
+ * Teacher: post new material metadata (AFTER file upload) AND send email notifications
+ */
+router.post('/:id/materials', requireAuth, requireRole('teacher'), async (req, res) => {
+  const { title, description, filePath, fileName } = req.body; // Expects Cloudinary URL in filePath
+  const { id: courseId } = req.params;
+  const teacherId = req.user.sub;
+
+  if (!title) { return res.status(400).json({ message: 'Title is required' }); }
+  if (!mongoose.Types.ObjectId.isValid(courseId)) { return res.status(400).json({ message: 'Invalid Course ID.' }); }
+
+  try {
+    const course = await Course.findOne({ _id: courseId, teacher: teacherId });
+    if (!course) {
+      // If course not found, maybe delete the uploaded file from Cloudinary? (More complex)
+      return res.status(404).json({ message: 'Course not found or not owned' });
+    }
+
+    // --- Save Cloudinary URL in filePath ---
+    const newMaterial = { title, description, filePath, fileName };
+    course.materials.push(newMaterial);
+    await course.save();
+
+    res.status(201).json({ message: 'Material posted!', course });
+
+    // --- Fire-and-Forget Email Sending ---
+    const sendEmails = async () => {
+        try {
+            const students = await User.find({ _id: { $in: course.students } }, 'email name');
+            if(students.length === 0) return; // No students, skip email
+
+            const emailList = students.map(s => s.email);
+            const testEmailAddress = 'somanshrajkashyap@gmail.com'; // Your verified email
+            const hasVerifiedStudent = students.some(s => s.email === testEmailAddress);
+
+            if (!hasVerifiedStudent) {
+                console.log('Material posted, but verified student not enrolled.');
+                return;
+            }
+
+            const { data, error } = await resend.emails.send({
+              from: 'onboarding@resend.dev',
+              to: testEmailAddress,
+              subject: `New Material for ${course.title}`,
+              html: `
+                <div>
+                  <h3>Hi student,</h3>
+                  <p>New material in <strong>${course.title}</strong>:</p>
+                  <h4>${title}</h4>
+                  ${description ? `<p>${description}</p>` : ''}
+                  ${fileName ? `<p><strong>File:</strong> <a href="${filePath}">${fileName}</a></p>` : ''}
+                  <br/><p>Log in to view.</p>
+                </div>
+              ` // Included link in email
+            });
+            if (error) { console.error('Resend Error:', error); return; }
+            console.log('Resend Success:', data);
+            console.log(`Email sent to ${testEmailAddress} for course ${courseId}`);
+        } catch(emailError) { console.error('Email Sending Error:', emailError); }
+    };
+    sendEmails();
+
+  } catch (error) {
+    console.error('Error posting material metadata:', error);
+    // If saving metadata failed after successful upload, ideally delete from Cloudinary (more complex)
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+
+/**
+ * Public: list published courses (anyone can see)
+ */
+router.get('/', async (_req, res) => {
+ try {
+    const list = await Course.find({ published: true })
+      .populate('teacher', 'name')
+      .sort({ createdAt: -1 });
+    res.json({ courses: list });
+  } catch(error) {
+      console.error("Error fetching public courses:", error);
+      res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+/**
+ * Student: enroll in a published course (Original - unsecured)
+ * NOTE: This should be removed in production as payment verification is the secure way.
  */
 router.post('/:id/enroll', requireAuth, requireRole('student'), async (req, res) => {
-  // ... (This route is now unsecured and should be removed, but we'll leave it for now) ...
-  const c = await Course.findById(req.params.id);
-  if (!c || !c.published) return res.status(404).json({ message: 'Not found' });
-  if (!c.students.includes(req.user.sub)) {
-    c.students.push(req.user.sub);
-    await c.save();
+  try {
+     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({ message: 'Invalid Course ID.' });
+     }
+    const c = await Course.findById(req.params.id);
+    if (!c || !c.published) return res.status(404).json({ message: 'Course not found or not published' });
+    if (!c.students.includes(req.user.sub)) {
+      c.students.push(req.user.sub);
+      await c.save();
+    }
+    res.json({ course: c });
+  } catch(error) {
+      console.error("Error during manual enrollment:", error);
+      res.status(500).json({ message: 'Internal Server Error' });
   }
-  res.json({ course: c });
 });
 
 /**
  * Student: list courses they are enrolled in
  */
 router.get('/enrolled', requireAuth, requireRole('student'), async (req, res) => {
-  const list = await Course.find({ students: req.user.sub })
-    .populate('teacher', 'name')
-    .sort({ createdAt: -1 });
-  res.json({ courses: list });
-});
-
-
-// --- 4. THIS IS THE ENTIRE NEW FEATURE ---
-/**
- * Teacher: post new material to a course AND send email notifications
- */
-router.post('/:id/materials', requireAuth, requireRole('teacher'), async (req, res) => {
-  const { title, description } = req.body;
-  const { id: courseId } = req.params;
-  const teacherId = req.user.sub;
-
-  if (!title) {
-    return res.status(400).json({ message: 'Title is required' });
-  }
-
   try {
-    // 1. Find the course (and verify ownership)
-    const course = await Course.findOne({ _id: courseId, teacher: teacherId });
-    if (!course) {
-      return res.status(404).json({ message: 'Course not found' });
-    }
-
-    // 2. Add the new material
-    const newMaterial = { title, description };
-    course.materials.push(newMaterial);
-    await course.save();
-
-    // 3. Respond to the teacher immediately.
-    // We won't make the teacher wait for all the emails to send.
-    res.status(201).json({ message: 'Material posted!', course });
-
-    // 4. "Fire-and-Forget" Email Sending
-    // This function will run in the background.
-    const sendEmails = async () => {
-      try {
-        // Find all students enrolled in the course
-        const students = await User.find({ _id: { $in: course.students } }, 'email name');
-        
-        // Create a list of email addresses
-        const emailList = students.map(student => student.email);
-
-        if (emailList.length === 0) {
-          console.log('Material posted, but no students are enrolled to notify.');
-          return;
-        }
-
-        // Send one email to all students (BCC)
-        // You MUST use your own verified domain for 'from'.
-        // For testing, Resend will replace this with 'onboarding@resend.dev'
-        // For testing, we can only send to the verified email.
-const testEmailAddress = 'somanshrajkashyap@gmail.com';
-
-// Check if any enrolled student has this test email
-const hasVerifiedStudent = students.some(s => s.email === testEmailAddress);
-
-if (!hasVerifiedStudent) {
-  console.log('Material posted, but the verified student (somanshrajkashyap@gmail.com) is not enrolled. No email sent.');
-  return; // Stop here
-}
-
-const { data, error } = await resend.emails.send({
-  from: 'onboarding@resend.dev',
-  to: testEmailAddress, // <-- THIS IS THE FIX
-  // We remove the 'bcc' field entirely for this test
-  subject: `New Material for ${course.title}`,
-  html: `
-    <div>
-      <h3>Hi student,</h3>
-      <p>Your teacher has posted new material in your course: <strong>${course.title}</strong></p>
-      <hr />
-      <h4>${title}</h4>
-      <p>${description}</p>
-      <br/>
-      <p>Please log in to Innodeed Classroom to view it.</p>
-    </div>
-  `
-});
-
-if (error) {
-  console.error('Error response from Resend:', error);
-  return; // Stop here if Resend gave us an error
-}
-
-// If successful, log the data
-console.log('Success response from Resend:', data);
-console.log(`Email notification sent to ${testEmailAddress} for course ${courseId}`);
-// --- END OF REPLACEMENT ---
-        
-        console.log(`Email notification sent to ${emailList.length} students for course ${courseId}`);
-
-      } catch (emailError) {
-        console.error('Error sending email notification:', emailError);
-      }
-    };
-
-    sendEmails(); // Run the function without 'await'
-
-  } catch (error) {
-    console.error('Error posting material:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    const list = await Course.find({ students: req.user.sub })
+      .populate('teacher', 'name')
+      .sort({ createdAt: -1 });
+    res.json({ courses: list });
+  } catch(error) {
+      console.error("Error fetching enrolled courses:", error);
+      res.status(500).json({ message: 'Internal Server Error' });
   }
 });
 

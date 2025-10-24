@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { Box, Button, Container, Typography, List, ListItem } from '@mui/material';
 import styles from "./courses.module.css";
+import { useRouter } from 'next/navigation'; // <-- 1. IMPORT
 
 // 1. ADD THIS TYPE DEFINITION FOR RAZORPAY
 declare global {
@@ -21,6 +22,7 @@ const formatPrice = (priceInPaise: number) => {
 export default function StudentCoursesPage() {
   const [publishedCourses, setPublishedCourses] = useState<any[]>([]);
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
+  const router = useRouter(); // <-- 2. INITIALIZE
 
   const loadPublished = async () => {
     try {
@@ -40,11 +42,9 @@ export default function StudentCoursesPage() {
     }
   };
 
-  // 3. THIS IS THE COMPLETELY REPLACED ENROLL FUNCTION
   const handleEnroll = async (course: any) => {
     try {
       // --- 1. Create Order ---
-      // Call the backend route you created in Step 3
       const { order, key } = await api(`/api/payment/checkout/${course._id}`, {
         method: 'POST',
       });
@@ -54,20 +54,18 @@ export default function StudentCoursesPage() {
         key: key,
         amount: order.amount, // Amount in paise
         currency: order.currency,
-        name: 'Innodeed Classroom', // Your project name
+        name: 'Innodeed Classroom',
         description: `Enroll in ${course.title}`,
         order_id: order.id,
         
-        // --- 3. Handler function (called on payment success) ---
         handler: async function (response: any) {
           try {
             // --- 4. Verify Payment ---
-            // Call the backend route you created in Step 4
             const verificationData = {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-              courseId: course._id, // Pass courseId to the backend
+              courseId: course._id,
             };
             
             await api('/api/payment/verify', {
@@ -75,7 +73,6 @@ export default function StudentCoursesPage() {
               body: JSON.stringify(verificationData),
             });
             
-            // --- 5. Success ---
             alert('Payment successful! You are now enrolled.');
             loadEnrolled(); // Refresh the enrolled courses list
 
@@ -85,16 +82,14 @@ export default function StudentCoursesPage() {
           }
         },
         prefill: {
-          // You can prefill user data here if you have it
           // name: "Student Name",
           // email: "student.email@example.com",
         },
         theme: {
-          color: '#3399cc', // Your theme color
+          color: '#3399cc',
         },
       };
 
-      // --- 6. Open Razorpay Checkout ---
       const rzp1 = new window.Razorpay(options);
       rzp1.on('payment.failed', function (response: any) {
         alert(`Payment failed: ${response.error.description}`);
@@ -112,9 +107,14 @@ export default function StudentCoursesPage() {
     loadEnrolled();
   }, []);
 
+  // 3. --- ADD NAVIGATION FUNCTION ---
+  const viewCourse = (courseId: string) => {
+    router.push(`/student/courses/${courseId}`);
+  };
+
   return (
     <Container className={styles.page} maxWidth={false} disableGutters>
-      {/* Available Courses */}
+      {/* Available Courses (No changes here) */}
       <Typography variant="h4" component="h1" className={styles.sectionTitle} mt={4} mb={2}>
         <b>AVAILABLE COURSES</b>
       </Typography>
@@ -130,18 +130,14 @@ export default function StudentCoursesPage() {
               </div>
             </Box>
             
-            {/* 4. --- MODIFIED BUTTON & PRICE DISPLAY --- */}
             <Box style={{ textAlign: 'right', marginLeft: 'auto', flexShrink: 0 }}>
-              
-              {/* --- THIS IS THE MODIFIED LINE --- */}
               <Typography variant="h6" component="div" className={styles.priceGradient}>
                 {formatPrice(course.price)}
               </Typography>
-              
               <Button
-                sx={{ ml: 1 }}
+                sx={{ ml: 2 }} // Added margin-left
                 className={styles.enrollButton}
-                onClick={() => handleEnroll(course)} // Pass the whole course object
+                onClick={() => handleEnroll(course)}
                 disabled={enrolledCourses.some(c => c._id === course._id)}
               >
                 {enrolledCourses.some(c => c._id === course._id) ? 'Enrolled' : 'Enroll Now'}
@@ -158,7 +154,12 @@ export default function StudentCoursesPage() {
       </Typography>
       <List>
         {enrolledCourses.map(course => (
-          <ListItem key={course._id} className={styles.courseCard}>
+          // 4. --- APPLY CHANGES TO THIS LISTITEM ---
+          <ListItem 
+            key={course._id} 
+            className={styles.enrolledCourseCard} // Use new style
+            onClick={() => viewCourse(course._id)}  // Add onClick
+          >
             <Box className={styles.courseText}>
               <div className={styles.courseTitle}>{course.title}</div>
               <div className={styles.courseDescription}>{course.description}</div>

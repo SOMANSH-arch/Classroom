@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import Assignment from '../models/Assignment.model.js';
 import Submission from '../models/Submission.model.js';
+import mongoose from 'mongoose'; // <-- Make sure this is imported
 
 const router = Router();
 
@@ -38,5 +39,31 @@ router.get('/teacher', requireAuth, requireRole('teacher'), async (req, res) => 
     res.status(500).json({ message: 'Error fetching assignments' });
   }
 });
+
+
+// --- THIS IS THE ROUTE THAT IS MISSING ---
+/**
+ * Get a single assignment by its ID
+ */
+router.get('/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid assignment ID' });
+    }
+
+    const assignment = await Assignment.findById(id);
+    if (!assignment) {
+      return res.status(404).json({ message: 'Assignment not found' });
+    }
+    
+    res.json({ assignment });
+  } catch (err) {
+    console.error('Error fetching assignment:', err);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+// --- END OF THE MISSING ROUTE ---
+
 
 export default router;
