@@ -1,177 +1,245 @@
-import { Router } from 'express';
+import { Router } from 'express'; // Use express Router
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import Submission from '../models/Submission.model.js';
+import Assignment from '../models/Assignment.model.js';
+import Course from '../models/Course.model.js'; // Needed for ownership check
+import { uploadSubmission } from '../middleware/upload.js';
+import { v2 as cloudinary } from 'cloudinary';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
+import mongoose from 'mongoose';
 
 const router = Router();
 
-// Configure multer for file uploads
-const uploadDir = path.resolve('uploads/submissions');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (_, __, cb) => cb(null, uploadDir),
-  filename: (_, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true,
 });
-const upload = multer({ storage });
+
+// Cloudinary upload helper
+const uploadToCloudinary = (fileBuffer, options) => {
+    return new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_stream(options, (error, result) => {
+            if (error) { reject(error); } else { resolve(result); }
+        }).end(fileBuffer);
+    });
+};
 
 /**
- * Student: submit or update assignment
+ * POST / - Create a new submission (handles file upload to Cloudinary)
  */
-router.post('/', requireAuth, requireRole('student'), upload.single('file'), async (req, res) => {
-  try {
-    const { assignment, content } = req.body;
+router.post(
+    '/',
+    requireAuth,
+    uploadSubmission.single('submissionFile'),
+    async (req, res) => {
+        const { assignmentId, content } = req.body;
+        const studentId = req.user.sub;
 
-    // Check if a submission already exists
-    let existing = await Submission.findOne({
-      assignment,
-      student: req.user.sub
-    });
-
-    const submissionData = {
-      content
-    };
-
-    if (req.file) {
-      submissionData.files = [
-        {
-          name: req.file.originalname,
-          url: `/uploads/submissions/${req.file.filename}`
+        if (!assignmentId || !mongoose.Types.ObjectId.isValid(assignmentId)) {
+            return res.status(400).json({ message: 'Valid Assignment ID is required.' });
         }
-      ];
+        if (!req.file && (!content || content.trim() === '')) {
+            return res.status(400).json({ message: 'Submission requires a file or text content.' });
+        }
+
+        let fileUrl = null;
+        let originalFileName = null;
+        let cloudinaryPublicId = null;
+
+        try {
+            // Check for existing submission first (more efficient)
+             const existingSubmission = await Submission.findOne({ assignment: assignmentId, student: studentId });
+             if (existingSubmission) {
+                  return res.status(409).json({ message: 'You have already submitted for this assignment.' });
+             }
+
+            // Upload file if present
+            if (req.file) {
+                const assignment = await Assignment.findById(assignmentId);
+                if (!assignment) return res.status(404).json({ message: 'Associated assignment not found.' });
+
+                const uploadOptions = {
+                    resource_type: "raw",
+                    folder: `innodeed-classroom/submissions/${assignment.course}/${assignmentId}/${studentId}`,
+                    public_id: `${Date.now()}-${req.file.originalname.split('.').slice(0, -1).join('.')}`,
+                };
+                const result = await uploadToCloudinary(req.file.buffer, uploadOptions);
+                if (!result || !result.secure_url) throw new Error('Cloudinary upload failed');
+                fileUrl = result.secure_url;
+                originalFileName = req.file.originalname;
+                cloudinaryPublicId = result.public_id;
+            }
+
+            // Create Submission document
+            const newSubmissionData = {
+                assignment: assignmentId,
+                student: studentId,
+                content: content || '',
+                ...(fileUrl && originalFileName && { file: { url: fileUrl, name: originalFileName } })
+            };
+            const newSubmission = await Submission.create(newSubmissionData);
+            res.status(201).json({ message: 'Submission successful!', submission: newSubmission });
+
+        } catch (error) {
+            console.error("Error creating submission:", error);
+            if (cloudinaryPublicId && !(error.code === 11000)) { // Cleanup if not duplicate error
+               try { await cloudinary.uploader.destroy(cloudinaryPublicId, { resource_type: 'raw'}); } catch (delErr) { console.error("Failed cleanup:", delErr);}
+            }
+            if (error.code === 11000) { // Handle duplicate error gracefully
+                return res.status(409).json({ message: 'You have already submitted for this assignment.' });
+            }
+            res.status(500).json({ message: `Submission failed: ${error.message || 'Internal Server Error'}` });
+        }
+    },
+    // Multer Error Handler
+    (error, req, res, next) => {
+        if (error instanceof multer.MulterError || error) {
+            return res.status(400).json({ message: `File upload error: ${error.message}` });
+        }
+        next();
     }
+);
 
-    if (existing) {
-      // Update existing submission
-      existing.content = submissionData.content;
-      if (submissionData.files) {
-        existing.files = submissionData.files;
-      }
-      await existing.save();
-      return res.json({ message: 'Submission updated', submission: existing });
+
+// GET Submissions for the logged-in student
+router.get('/mine', requireAuth, async (req, res) => { // Removed requireRole('student') as requireAuth implies user
+    try {
+        const submissions = await Submission.find({ student: req.user.sub })
+                                        .populate({ // Populate assignment and course title
+                                            path: 'assignment',
+                                            select: 'title dueDate course', // Include course ID
+                                            populate: {
+                                                path: 'course',
+                                                select: 'title' // Select course title
+                                            }
+                                        })
+                                        .sort({ createdAt: -1 });
+        res.json({ submissions });
+    } catch (error) {
+        console.error("Error fetching student submissions:", error);
+        res.status(500).json({ message: 'Internal Server Error fetching submissions.' });
     }
-
-    // Create a new submission
-    const sub = await Submission.create({
-      assignment,
-      student: req.user.sub,
-      ...submissionData
-    });
-
-    res.status(201).json({ message: 'Submission created', submission: sub });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error saving submission' });
-  }
 });
 
-/**
- * Student: view my submissions
- */
-router.get('/mine', requireAuth, requireRole('student'), async (req, res) => {
+
+// GET submissions for a specific assignment (Teacher only)
+router.get('/assignment/:assignmentId', requireAuth, requireRole('teacher'), async (req, res) => {
   try {
-    const submissions = await Submission.find({ student: req.user.sub })
-      .populate({
-        path: 'assignment',
-        populate: { path: 'course' }
-      });
+    const { assignmentId } = req.params;
+     if (!mongoose.Types.ObjectId.isValid(assignmentId)) {
+        return res.status(400).json({ message: 'Invalid Assignment ID.' });
+     }
+    // Find assignment first to verify teacher ownership
+    const assignment = await Assignment.findById(assignmentId).populate('course', 'teacher');
+    if (!assignment) return res.status(404).json({ message: 'Assignment not found.' });
+    if (assignment.course?.teacher?.toString() !== req.user.sub) {
+        return res.status(403).json({ message: 'You are not authorized to view submissions for this assignment.' });
+    }
+
+    // Now fetch submissions for this assignment, populating student details
+    const submissions = await Submission.find({ assignment: assignmentId })
+      .populate('student', 'name email') // Populate student name and email
+      .sort({ createdAt: -1 }); // Sort by newest first
+
     res.json({ submissions });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error fetching submissions' });
+    console.error("Error fetching assignment submissions:", err);
+    res.status(500).json({ message: 'Error fetching assignment submissions' });
   }
 });
 
-/**
- * Teacher: view submissions for assignments in their courses
- */
-router.get('/', requireAuth, requireRole('teacher'), async (req, res) => {
-  try {
-    const submissions = await Submission.find()
-      .populate({
-        path: 'assignment',
-        populate: { path: 'course', select: 'title teacher' }
-      })
-      .populate('student', 'name email');
-
-    // Filter so teacher sees only submissions for their own courses
-    const filtered = submissions.filter(s => s.assignment?.course?.teacher?.toString() === req.user.sub);
-
-    res.json({ submissions: filtered });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error fetching submissions' });
-  }
-});
 
 /**
- * Teacher: grade a submission
+ * Teacher: grade a submission (UPDATE SCORE/FEEDBACK)
  */
 router.patch('/:id/grade', requireAuth, requireRole('teacher'), async (req, res) => {
   try {
-    const { grade, feedback } = req.body;
-    const sub = await Submission.findById(req.params.id).populate({
-      path: 'assignment',
-      populate: { path: 'course', select: 'teacher' }
+    const { score, feedback } = req.body; // Score might be null, empty string, or a number string
+    const { id: submissionId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(submissionId)) {
+        return res.status(400).json({ message: 'Invalid Submission ID' });
+    }
+
+    // --- Validate Score ---
+    let validatedScore = null; // Default to null if score is empty/invalid
+    // Check if score is provided and not just whitespace
+    if (score !== null && score !== undefined && String(score).trim() !== '') {
+        const numScore = Number(score); // Convert to number
+        // Check if it's a valid number within range
+        if (isNaN(numScore) || numScore < 0 || numScore > 100) {
+             return res.status(400).json({ message: 'Score must be a number between 0 and 100, or empty.' });
+        }
+        validatedScore = numScore; // Assign the valid number
+    }
+    // --- End Validation ---
+
+    // Find the submission and verify teacher ownership via the assignment's course
+    const sub = await Submission.findById(submissionId).populate({
+      path: 'assignment', // Populate assignment
+      select: 'course', // Select only the course field from assignment
+      populate: { path: 'course', select: 'teacher' } // Populate course and select teacher
     });
 
-    if (!sub) return res.status(404).json({ message: 'Submission not found' });
+    if (!sub) {
+      return res.status(404).json({ message: 'Submission not found' });
+    }
+    // Authorization check
     if (sub.assignment?.course?.teacher?.toString() !== req.user.sub) {
       return res.status(403).json({ message: 'Not authorized to grade this submission' });
     }
 
-    sub.grade = grade;
-    sub.feedback = feedback;
-    await sub.save();
+    // --- Update score and feedback ---
+    sub.score = validatedScore; // Assign the validated number or null
+    sub.feedback = feedback || ''; // Assign feedback or ensure it's an empty string if null/undefined
 
-    res.json({ message: 'Grade saved', submission: sub });
+    await sub.save(); // Save the changes
+
+    console.log(`Grade saved for submission ${submissionId}: Score=${validatedScore}, Feedback=${sub.feedback}`);
+    res.json({ message: 'Grade saved successfully', submission: sub });
+
   } catch (err) {
-    console.error(err);
+    console.error("Error grading submission:", err);
     res.status(500).json({ message: 'Error grading submission' });
   }
 });
 
-router.get('/count/:assignmentId', requireAuth, requireRole('teacher'), async (req, res) => {
-  try {
-    const count = await Submission.countDocuments({ assignment: req.params.assignmentId });
-    res.json({ count });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error fetching submission count' });
-  }
-});
 
+// GET a single submission by ID (Student or Teacher) - Basic version
+router.get('/:id', requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: 'Invalid Submission ID.' });
+        }
+        // Find submission
+        const submission = await Submission.findById(id).populate('assignment'); // Populate assignment
 
-/**
- * Teacher: view submissions for a specific assignment
- */
-router.get('/assignment/:assignmentId', requireAuth, requireRole('teacher'), async (req, res) => {
-  try {
-    const { assignmentId } = req.params;
-    const submissions = await Submission.find({ assignment: assignmentId })
-      .populate('student', 'name email')
-      .populate({
-        path: 'assignment',
-        populate: { path: 'course', select: 'title teacher' }
-      });
+        if (!submission) {
+            return res.status(404).json({ message: 'Submission not found.' });
+        }
 
-    // Make sure this teacher owns the course for this assignment
-    const filtered = submissions.filter(
-      s => s.assignment?.course?.teacher?.toString() === req.user.sub
-    );
+        // --- Authorization ---
+        // Allow if the user is the student who submitted OR the teacher of the course
+        const isStudentOwner = submission.student.equals(req.user.sub);
+        // Need to ensure assignment and course are populated correctly for teacher check
+        const isTeacher = submission.assignment?.course?.teacher?.toString() === req.user.sub; // Requires more population if course isn't populated via assignment
 
-    res.json({ submissions: filtered });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error fetching assignment submissions' });
-  }
+        // Simplified check (assuming assignment population as above):
+         if (!isStudentOwner /* && !isTeacher */ ) { // Add teacher check later if needed
+             // For now, only student can view their own single submission detail
+             return res.status(403).json({ message: 'Forbidden. You cannot view this submission.' });
+         }
+
+        res.json({ submission });
+
+    } catch (error) {
+        console.error("Error fetching submission:", error);
+        res.status(500).json({ message: 'Internal Server Error fetching submission.' });
+    }
 });
 
 
