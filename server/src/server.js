@@ -18,11 +18,24 @@ import paymentRoutes from './routes/payment.routes.js';
 const app = express();
 
 // --- CORS (with credentials for cookies) ---
-app.use(cors({
-  origin: process.env.CLIENT_ORIGIN,
-  credentials: true
-}));
+const allowedOrigins = [
+  "https://classroom-j9p5il6vz-somanshs-projects-2206d97b.vercel.app",
+  "https://classroom.vercel.app",
+  "http://localhost:3000"
+];
 
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 // --- Security & logging middleware ---
 app.use(helmet());
 app.use(morgan('dev'));
