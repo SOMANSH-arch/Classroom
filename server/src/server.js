@@ -12,53 +12,44 @@ import courseRoutes from './routes/course.routes.js';
 import assignmentRoutes from './routes/assignment.routes.js';
 import submissionRoutes from './routes/submission.routes.js';
 import aiRoutes from './routes/ai.routes.js';
+
 import paymentRoutes from './routes/payment.routes.js';
 
 const app = express();
 
-// --- CORS ---
-const allowedOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:4000';
-console.log('✅ Allowed Origin:', allowedOrigin);
-
+// --- CORS (with credentials for cookies) ---
 app.use(
   cors({
-    origin: allowedOrigin,
+    origin: process.env.CLIENT_ORIGIN,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
-// Explicitly handle preflight requests
-app.options('*', cors());
-
-// --- Security & logging ---
+// --- Security & logging middleware ---
 app.use(helmet());
 app.use(morgan('dev'));
 
 // --- Body parsers ---
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '5mb' })); // Increased limit for file metadata
 app.use(cookieParser());
 
-// --- Static files ---
+// --- Serve uploaded files (student submissions, etc.) ---
 app.use('/uploads', express.static(path.resolve('uploads')));
 
-// --- Health check ---
+// --- Health check route ---
 app.get('/health', (_, res) => res.json({ ok: true }));
 
-// --- Routes ---
+// --- API Routes ---
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/ai', aiRoutes);
+
 app.use('/api/payment', paymentRoutes);
 
-// --- Start server ---
+// --- Start Server after DB connection ---
 const port = process.env.PORT || 4000;
 connectDB().then(() => {
-  app.listen(port, () => {
-    console.log(`✅ Server running on port ${port}`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-  });
+  app.listen(port, () => console.log(`✅ API running on port ${port}`));
 });
