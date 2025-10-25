@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-import cors from 'cors'; // Still needed for internal use/type checking
+import cors from 'cors'; 
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -16,32 +16,40 @@ import paymentRoutes from './routes/payment.routes.js';
 
 const app = express();
 
-// --- CRITICAL FIX: Manual CORS Handling for Deployment ---
-// This bypasses automated Express CORS issues on services like Render/Vercel.
-app.use((req, res, next) => {
-    const allowedOrigin = process.env.CLIENT_ORIGIN;
-    
-    // 1. Set Access-Control-Allow-Origin dynamically to the frontend's HTTPS URL
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigin || 'https://classroom-1r4ryysw-somanshs-projects-2206d97b.vercel.app');
-    
-    // 2. Allow credentials (cookies)
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    
-    // 3. Define allowed methods and headers
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+// --- CRITICAL FIX: Universal CORS with Credentials ---
+// This ensures ALL origins are allowed to send credentials (the cookie).
+// Security is maintained by the 'secure' and 'sameSite' flags on the cookie itself.
+app.use(
+  cors({
+    origin: (origin, callback) => {
+        // Allow the request if there is no origin (like a direct server call)
+        // OR if the origin matches our client origin (Vercel URL).
+        const allowedOrigins = [process.env.CLIENT_ORIGIN, 'https://classroom-1r4ryysw-somanshs-projects-2206d97b.vercel.app'];
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'), false);
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    preflightContinue: false, // Do not pass preflight to next middleware
+    optionsSuccessStatus: 204 // Crucial for preflight success on some hosts
+  })
+);
 
-    // 4. Handle Preflight Request (OPTIONS)
-    // The browser sends this check first for complex requests (like POST with cookies)
-    if (req.method === 'OPTIONS') {
-        // Must respond with status 204 (No Content) immediately
-        return res.sendStatus(204);
-    }
-    
-    next();
-});
+// --- Handle Preflight OPTIONS for ALL routes (REQUIRED) ---
+app.options('*', cors({
+    origin: process.env.CLIENT_ORIGIN,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    optionsSuccessStatus: 204
+}));
 
-// NOTE: The 'helmet' middleware is commented out to prevent potential header conflicts
+// --- Security & logging middleware ---
+// We will leave helmet disabled to avoid header conflicts
 // app.use(helmet()); 
 app.use(morgan('dev'));
 
