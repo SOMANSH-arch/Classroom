@@ -10,13 +10,36 @@ export default function LoginPage() {
   const router = useRouter();
 
   const submit = async () => {
+  try {
+    // The API call is correct, but we'll ensure form data is sent properly:
+    await api('/api/auth/login', { 
+        method: 'POST', 
+        body: JSON.stringify(form) 
+    });
+    
+    // Only navigate if the API call completes successfully (status 200/201)
+    router.push('/dashboard');
+    
+  } catch (err: any) {
+    console.error("Login Error:", err);
+    
+    // Display a user-friendly error message, extracting it from the API error response
+    let errorMessage = "Login failed. Please check your network.";
+    
+    // Your api.ts throws an Error(await res.text()). We can try to parse the JSON error body
     try {
-      await api('/api/auth/login', { method:'POST', body: JSON.stringify(form) });
-      router.push('/dashboard');
-    } catch (err) {
-      console.error(err);
+        const errorBody = JSON.parse(err.message);
+        errorMessage = errorBody.message || "Invalid credentials or network error.";
+    } catch {
+        // If it's not JSON (e.g., an HTML 404 page), use a generic message
+        if (err.message.includes('404')) {
+             errorMessage = "API server unavailable or endpoint missing.";
+        }
     }
-  };
+
+    alert(errorMessage);
+  }
+};
 
   return (
     <Container className={styles.container} maxWidth={false} disableGutters>

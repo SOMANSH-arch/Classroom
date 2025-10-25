@@ -2,19 +2,19 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.model.js';
 import { signJwt } from '../utils/jwt.js';
-import { requireAuth } from '../middleware/auth.js'; // <-- CRITICAL IMPORT ADDED
+import { requireAuth } from '../middleware/auth.js'; 
 
 const router = Router();
 
-// --- CRITICAL FIX: Dynamic Cookie Setting ---
+// --- PERMANENT FIX: Dynamic Cookie Setting for Deployment ---
 function setCookie(res, token) {
-  // Check environment: NODE_ENV is set to 'production' on Render
+  // Checks environment: NODE_ENV is 'production' on Render/Vercel, 'development' locally
   const isProduction = process.env.NODE_ENV === 'production';
   const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
 
   res.cookie('token', token, {
     httpOnly: true,
-    // MUST be true and 'none' for Vercel (HTTPS) -> Render (cross-site) communication
+    // MUST be true and 'none' for cross-site HTTPS deployment (Vercel <-> Render)
     secure: isProduction,
     sameSite: isProduction ? 'none' : 'lax', 
     maxAge,
@@ -34,7 +34,6 @@ router.post('/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await User.create({ name, email, passwordHash, role });
 
-    // Login immediately after registration
     const token = signJwt({ sub: user._id, role: user.role });
     setCookie(res, token);
     
@@ -78,11 +77,11 @@ router.post('/login', async (req, res) => {
  * POST /api/auth/logout
  */
 router.post('/logout', (req, res) => {
-  // Clear the cookie
+  // Clear the cookie using the dynamic settings
   res.clearCookie('token', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Use same dynamic check
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', 
     path: '/',
   });
   res.json({ message: 'Logged out' });

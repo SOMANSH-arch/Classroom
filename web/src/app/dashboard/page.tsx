@@ -46,9 +46,10 @@ export default function Dashboard() {
       {me.role === 'teacher' ? (
         <nav className={styles.nav}>
           <ul>
-            <li><Link href="/teacher/courses">📚 Manage Courses</Link></li>
-            <li><Link href="/teacher/assignments">📝 Manage Assignments</Link></li>
-            <li><Link href="/teacher/submissions">📂 View Submissions</Link></li>
+            <li><Link href="/teacher/courses">📚 Manage Courses (Hub)</Link></li>
+            <li><Link href="/teacher/assignments">📝 Manage All Assignments</Link></li>
+            <li><Link href="/teacher/materials">📄 Post Materials (Global)</Link></li> {/* <-- NEW LINK */}
+            <li><Link href="/teacher/submissions">📂 Grade Submissions</Link></li>
           </ul>
         </nav>
       ) : (
