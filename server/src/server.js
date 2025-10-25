@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import express from 'express';
-import cors from 'cors'; 
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -16,40 +15,33 @@ import paymentRoutes from './routes/payment.routes.js';
 
 const app = express();
 
-// --- CRITICAL FIX: Universal CORS with Credentials ---
-// This ensures ALL origins are allowed to send credentials (the cookie).
-// Security is maintained by the 'secure' and 'sameSite' flags on the cookie itself.
-app.use(
-  cors({
-    origin: (origin, callback) => {
-        // Allow the request if there is no origin (like a direct server call)
-        // OR if the origin matches our client origin (Vercel URL).
-        const allowedOrigins = [process.env.CLIENT_ORIGIN, 'https://classroom-1r4ryysw-somanshs-projects-2206d97b.vercel.app'];
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'), false);
-        }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    preflightContinue: false, // Do not pass preflight to next middleware
-    optionsSuccessStatus: 204 // Crucial for preflight success on some hosts
-  })
-);
+// --- CRITICAL FIX: Manual Universal CORS Configuration ---
+// This is done BEFORE any other middleware to ensure preflight headers are sent first.
+app.use((req, res, next) => {
+    // 1. Set the specific frontend origin (Vercel URL)
+    const allowedOrigin = process.env.CLIENT_ORIGIN || 'https://classroom-1r4ryysw-somanshs-projects-2206d97b.vercel.app';
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    
+    // 2. Allow credentials (cookies)
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
+    // 3. Allow all common headers
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    // 4. Allow all necessary methods (critical for preflight)
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
 
-// --- Handle Preflight OPTIONS for ALL routes (REQUIRED) ---
-app.options('*', cors({
-    origin: process.env.CLIENT_ORIGIN,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    optionsSuccessStatus: 204
-}));
+    // 5. Handle Preflight Request (OPTIONS)
+    if (req.method === 'OPTIONS') {
+        // Send a success response immediately for the preflight check
+        return res.sendStatus(204); 
+    }
+    
+    next();
+});
 
 // --- Security & logging middleware ---
-// We will leave helmet disabled to avoid header conflicts
+// We keep helmet commented out as it is known to conflict with CORS headers.
 // app.use(helmet()); 
 app.use(morgan('dev'));
 
@@ -74,5 +66,6 @@ app.use('/api/payment', paymentRoutes);
 // --- Start Server after DB connection ---
 const port = process.env.PORT || 4000;
 connectDB().then(() => {
-    app.listen(port, () => console.log(`✅ API running on port ${port}`));
+    // We bind to 0.0.0.0 which Render requires
+    app.listen(port, '0.0.0.0', () => console.log(`✅ API running on port ${port}`));
 });
