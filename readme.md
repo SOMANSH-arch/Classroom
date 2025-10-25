@@ -52,33 +52,33 @@ You will need the following software installed:
 ```bash
 git clone https://github.com/SOMANSH-arch/Classroom.git
 cd Classroom
-
+```
 
 2️⃣ Setup Environment Variables
 
 Create .env files in both the server/ and web/ directories with necessary configuration (e.g., database connection string, API keys, port numbers).
 
 3️⃣ Install Dependencies for the Server
-cd server
+```cd server
 npm install  # or yarn install
-
+```
 4️⃣ Install Dependencies for the Web Client
-cd ../web
+```cd ../web
 npm install  # or yarn install
-
+```
 ▶️ Running the Application
 Start the Backend Server
 
 From the server/ directory:
-
+```
 npm run dev  # or your defined start script
-
+```
 Start the Frontend Client
 
 From the web/ directory:
-
+```
 npm run dev  # or your defined start script
-
+```
 
 The application should now be accessible in your web browser — typically at:
 
