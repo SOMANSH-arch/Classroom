@@ -2,75 +2,98 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.model.js';
 import { signJwt } from '../utils/jwt.js';
-import { requireAuth } from '../middleware/auth.js';
-import { z } from 'zod';
+import { requireAuth } from '../middleware/auth.js'; // <-- CRITICAL IMPORT ADDED
 
 const router = Router();
-const AuthSchema = z.object({
-  name: z.string().trim().min(1),
-  email: z.string().email(),
-  password: z.string().min(6),
-  role: z.enum(['teacher','student'])
-});
 
+// --- CRITICAL FIX: Dynamic Cookie Setting ---
+function setCookie(res, token) {
+  // Check environment: NODE_ENV is set to 'production' on Render
+  const isProduction = process.env.NODE_ENV === 'production';
+  const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+  res.cookie('token', token, {
+    httpOnly: true,
+    // MUST be true and 'none' for Vercel (HTTPS) -> Render (cross-site) communication
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax', 
+    maxAge,
+  });
+}
+
+/**
+ * POST /api/auth/register
+ */
 router.post('/register', async (req, res) => {
+  const { name, email, password, role } = req.body;
+  if (!name || !email || !password || !role) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
+
   try {
-    const { name, email, password, role } = AuthSchema.parse(req.body);
-    const exists = await User.findOne({ email });
-    if (exists) return res.status(409).json({ message: 'Email already in use' });
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await User.create({ name, email, passwordHash, role });
-    const token = signJwt({ sub: user._id.toString(), role: user.role, name: user.name, email: user.email });
+
+    // Login immediately after registration
+    const token = signJwt({ sub: user._id, role: user.role });
     setCookie(res, token);
-    res.status(201).json({ user: safeUser(user) });
-  } catch (e) {
-    res.status(400).json({ message: e?.message || 'Bad request' });
+    
+    res.status(201).json({ message: 'Registration successful', user: { id: user._id, name: user.name, role: user.role } });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ message: 'Email already exists' });
+    }
+    console.error(err);
+    res.status(500).json({ message: 'Server error during registration' });
   }
 });
 
+
+/**
+ * POST /api/auth/login
+ */
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body || {};
-  if (!email || !password) return res.status(400).json({ message: 'Missing email/password' });
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required' });
+  }
+
   const user = await User.findOne({ email });
-  if (!user) return res.status(401).json({ message: 'Invalid credentials' });
-  const ok = await bcrypt.compare(password, user.passwordHash);
-  if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
-  const token = signJwt({ sub: user._id.toString(), role: user.role, name: user.name, email: user.email });
+  if (!user) {
+    return res.status(401).json({ message: 'Invalid credentials' });
+  }
+
+  const isMatch = await bcrypt.compare(password, user.passwordHash);
+  if (!isMatch) {
+    return res.status(401).json({ message: 'Invalid credentials' });
+  }
+
+  const token = signJwt({ sub: user._id, role: user.role });
   setCookie(res, token);
-  res.json({ user: safeUser(user) });
+  
+  res.json({ message: 'Login successful', user: { id: user._id, name: user.name, role: user.role } });
 });
 
+/**
+ * POST /api/auth/logout
+ */
 router.post('/logout', (req, res) => {
-  res.clearCookie('token', cookieClearOptions());
-  res.json({ ok: true });
-});
-
-router.get('/me', requireAuth, async (req, res) => {
-  const user = await User.findById(req.user.sub).select('-passwordHash');
-  res.json({ user });
-});
-
-// helpers
-function safeUser(u) {
-  const { _id, name, email, role, createdAt } = u;
-  return { id: _id, name, email, role, createdAt };
-}
-function setCookie(res, token) {
-  res.cookie('token', token, {
-    httpOnly: true,
-    secure: false,
-    sameSite: 'lax',
-    maxAge: 1000 * 60 * 60 * 24 * 7,
-    path: '/'
-  });
-}
-function cookieClearOptions() {
-  return {
+  // Clear the cookie
+  res.clearCookie('token', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/'
-  };
-}
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Use same dynamic check
+    path: '/',
+  });
+  res.json({ message: 'Logged out' });
+});
+
+/**
+ * GET /api/auth/me (used by frontend to verify login status)
+ */
+router.get('/me', requireAuth, (req, res) => {
+  res.json({ user: { id: req.user.sub, name: req.user.name, role: req.user.role } });
+});
+
 
 export default router;
