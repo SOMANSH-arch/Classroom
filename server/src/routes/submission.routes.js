@@ -27,13 +27,11 @@ const uploadToCloudinary = (fileBuffer, options) => {
     });
 };
 
-// --- FIX: Ensure a clean router start ---
-
 /**
  * POST / - Create a new submission (handles file upload to Cloudinary)
  */
 router.post(
-    '/',
+    '/', // Path check: MUST be '/'
     requireAuth,
     uploadSubmission.single('submissionFile'),
     async (req, res) => {
@@ -94,7 +92,7 @@ router.post(
 router.get('/mine', requireAuth, async (req, res) => {
     try {
         const submissions = await Submission.find({ student: req.user.sub })
-                                        .populate({ 
+                                        .populate({
                                             path: 'assignment',
                                             select: 'title dueDate course',
                                             populate: { path: 'course', select: 'title' }
@@ -138,7 +136,7 @@ router.get('/assignment/:assignmentId', requireAuth, requireRole('teacher'), asy
 router.patch('/:id/grade', requireAuth, requireRole('teacher'), async (req, res) => {
   try {
     const { score, feedback } = req.body;
-    const { id: submissionId } = req.params;
+    const { id: submissionId } = req.params; // Path check: MUST be ':id'
 
     if (!mongoose.Types.ObjectId.isValid(submissionId)) { return res.status(400).json({ message: 'Invalid Submission ID' }); }
 
@@ -171,7 +169,7 @@ router.patch('/:id/grade', requireAuth, requireRole('teacher'), async (req, res)
 
 
 // GET a single submission by ID (Student or Teacher)
-router.get('/:id', requireAuth, async (req, res) => {
+router.get('/:id', requireAuth, async (req, res) => { // Path check: MUST be ':id'
     try {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'Invalid Submission ID.' }); }
