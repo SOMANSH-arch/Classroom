@@ -24,7 +24,7 @@ app.use(
     credentials: true,
   })
 );
-
+app.options('*', cors()); // <--- ADD THIS LINE
 // --- Security & logging middleware ---
 app.use(helmet());
 app.use(morgan('dev'));
