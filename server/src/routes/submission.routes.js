@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import Submission from '../models/Submission.model.js';
 import Assignment from '../models/Assignment.model.js';
-import Course from '../models/Course.model.js';
+
 import Course from '../models/Course.model.js';
 import { uploadSubmission } from '../middleware/upload.js';
 import { v2 as cloudinary } from 'cloudinary';
