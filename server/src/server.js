@@ -12,55 +12,53 @@ import courseRoutes from './routes/course.routes.js';
 import assignmentRoutes from './routes/assignment.routes.js';
 import submissionRoutes from './routes/submission.routes.js';
 import aiRoutes from './routes/ai.routes.js';
-
 import paymentRoutes from './routes/payment.routes.js';
 
 const app = express();
 
-// --- CORS (with credentials for cookies) ---
-const allowedOrigins = [
-  "https://classroom-j9p5il6vz-somanshs-projects-2206d97b.vercel.app",
-  "https://classroom.vercel.app",
-  "http://localhost:3000"
-];
+// --- CORS ---
+const allowedOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:4000';
+console.log('✅ Allowed Origin:', allowedOrigin);
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
+    origin: allowedOrigin,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
-// --- Security & logging middleware ---
+
+// Explicitly handle preflight requests
+app.options('*', cors());
+
+// --- Security & logging ---
 app.use(helmet());
 app.use(morgan('dev'));
 
 // --- Body parsers ---
-app.use(express.json({ limit: '5mb' })); // Increased limit for file metadata
+app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 
-// --- Serve uploaded files (student submissions, etc.) ---
+// --- Static files ---
 app.use('/uploads', express.static(path.resolve('uploads')));
 
-// --- Health check route ---
+// --- Health check ---
 app.get('/health', (_, res) => res.json({ ok: true }));
 
-// --- API Routes ---
+// --- Routes ---
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/ai', aiRoutes);
-
 app.use('/api/payment', paymentRoutes);
 
-// --- Start Server after DB connection ---
+// --- Start server ---
 const port = process.env.PORT || 4000;
 connectDB().then(() => {
-  app.listen(port, () => console.log(`✅ API running on port ${port}`));
+  app.listen(port, () => {
+    console.log(`✅ Server running on port ${port}`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+  });
 });
