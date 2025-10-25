@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cookieParser from 'cookie-parser';
-import helmet from 'helmet';
+// import helmet from 'helmet'; // Keep helmet disabled for now
 import morgan from 'morgan';
 import path from 'path';
 import connectDB from './utils/db.js';
@@ -15,41 +15,53 @@ import paymentRoutes from './routes/payment.routes.js';
 
 const app = express();
 
-// --- CRITICAL FIX: Manual Universal CORS Configuration ---
-// This is done BEFORE any other middleware to ensure preflight headers are sent first.
+// --- CRITICAL FIX: EXPLICIT Manual CORS Handling with Logging ---
 app.use((req, res, next) => {
-    // 1. Set the specific frontend origin (Vercel URL)
-    const allowedOrigin = process.env.CLIENT_ORIGIN || 'https://classroom-1r4ryysw-somanshs-projects-2206d97b.vercel.app';
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
-    
-    // 2. Allow credentials (cookies)
+    const requestOrigin = req.headers.origin; // Get the origin header from the incoming request
+    const allowedOrigin = process.env.CLIENT_ORIGIN; // Get the expected origin from .env
+
+    console.log(`[CORS Check] Request Origin: ${requestOrigin}`); // Log incoming origin
+    console.log(`[CORS Check] Allowed Origin (from env): ${allowedOrigin}`); // Log expected origin
+
+    // Dynamically set Allow-Origin header ONLY if it matches the expected client origin
+    if (requestOrigin && allowedOrigin && requestOrigin === allowedOrigin) {
+        res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+        console.log(`[CORS Check] Access-Control-Allow-Origin SET to: ${allowedOrigin}`);
+    } else if (!requestOrigin) {
+        // Allow requests with no origin (like server-to-server or tools like Postman)
+        console.log("[CORS Check] No Origin header found, proceeding without CORS headers.");
+    } else {
+        // Origin doesn't match - CORS error will likely occur, but log it
+        console.warn(`[CORS Check] Origin Mismatch! Request origin ${requestOrigin} does not match allowed origin ${allowedOrigin}.`);
+        // We still need to handle OPTIONS correctly even if origin mismatches
+    }
+
+    // Always allow credentials
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     
-    // 3. Allow all common headers
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    
-    // 4. Allow all necessary methods (critical for preflight)
+    // Always define allowed methods and headers
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-    // 5. Handle Preflight Request (OPTIONS)
+    // Handle Preflight Request (OPTIONS) - Respond immediately after setting headers
     if (req.method === 'OPTIONS') {
-        // Send a success response immediately for the preflight check
-        return res.sendStatus(204); 
+        console.log('[CORS Check] OPTIONS request received, sending 204.');
+        return res.sendStatus(204);
     }
     
+    // For non-OPTIONS requests, continue to other middleware/routes
     next();
 });
 
 // --- Security & logging middleware ---
-// We keep helmet commented out as it is known to conflict with CORS headers.
 // app.use(helmet()); 
-app.use(morgan('dev'));
+app.use(morgan('dev')); // Keep morgan for request logging
 
 // --- Body parsers ---
 app.use(express.json({ limit: '5mb' })); 
 app.use(cookieParser());
 
-// --- Serve uploaded files (Local Path is ignored on Cloudinary setup) ---
+// --- Serve uploaded files ---
 app.use('/uploads', express.static(path.resolve('uploads')));
 
 // --- Health check route ---
@@ -66,6 +78,8 @@ app.use('/api/payment', paymentRoutes);
 // --- Start Server after DB connection ---
 const port = process.env.PORT || 4000;
 connectDB().then(() => {
-    // We bind to 0.0.0.0 which Render requires
     app.listen(port, '0.0.0.0', () => console.log(`✅ API running on port ${port}`));
+}).catch(err => {
+    console.error("!!! Failed to connect to DB and start server:", err);
+    process.exit(1); // Exit if DB connection fails
 });

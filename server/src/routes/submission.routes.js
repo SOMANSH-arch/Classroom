@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import Submission from '../models/Submission.model.js';
 import Assignment from '../models/Assignment.model.js';
-
 import Course from '../models/Course.model.js';
 import { uploadSubmission } from '../middleware/upload.js';
 import { v2 as cloudinary } from 'cloudinary';
@@ -11,7 +10,7 @@ import mongoose from 'mongoose';
 
 const router = Router();
 
-// Configure Cloudinary (needs to be here)
+// Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -19,7 +18,7 @@ cloudinary.config({
   secure: true,
 });
 
-// Cloudinary upload helper (needs to be here)
+// Cloudinary upload helper
 const uploadToCloudinary = (fileBuffer, options) => {
     return new Promise((resolve, reject) => {
         cloudinary.uploader.upload_stream(options, (error, result) => {
@@ -32,7 +31,7 @@ const uploadToCloudinary = (fileBuffer, options) => {
  * POST / - Create a new submission (handles file upload to Cloudinary)
  */
 router.post(
-    '/', // Path check: MUST be '/'
+    '/',
     requireAuth,
     uploadSubmission.single('submissionFile'),
     async (req, res) => {
@@ -137,7 +136,7 @@ router.get('/assignment/:assignmentId', requireAuth, requireRole('teacher'), asy
 router.patch('/:id/grade', requireAuth, requireRole('teacher'), async (req, res) => {
   try {
     const { score, feedback } = req.body;
-    const { id: submissionId } = req.params; // Path check: MUST be ':id'
+    const { id: submissionId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(submissionId)) { return res.status(400).json({ message: 'Invalid Submission ID' }); }
 
@@ -170,7 +169,7 @@ router.patch('/:id/grade', requireAuth, requireRole('teacher'), async (req, res)
 
 
 // GET a single submission by ID (Student or Teacher)
-router.get('/:id', requireAuth, async (req, res) => { // Path check: MUST be ':id'
+router.get('/:id', requireAuth, async (req, res) => {
     try {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) { return res.status(400).json({ message: 'Invalid Submission ID.' }); }
