@@ -57,7 +57,6 @@ export function SubmissionsClient() {
 
                  // Use initialCourseId if it's present and valid
                  if (initialCourseId && fetchedCourses.some((c:any) => c._id === initialCourseId)) {
-                    // State is already initialized, but we confirm it here
                     setSelectedCourse(initialCourseId); 
                  } else if (initialCourseId) {
                     // Clear invalid URL ID
@@ -78,7 +77,6 @@ export function SubmissionsClient() {
 
             setLoadingAssignments(true);
             setAssignments([]);
-            // submissions and gradingStates will be cleared by the next effect
 
             try {
                 const data = await api(`/api/assignments/course/${selectedCourse}`);
@@ -89,7 +87,6 @@ export function SubmissionsClient() {
                  if (initialAssignmentId && fetchedAssignments.some((a:any) => a._id === initialAssignmentId)) {
                     setSelectedAssignment(initialAssignmentId);
                 } else if (initialAssignmentId) {
-                    // Clear invalid assignment ID if URL provided one
                     setSelectedAssignment('');
                 }
 
@@ -98,7 +95,7 @@ export function SubmissionsClient() {
         };
 
         fetchAssignments();
-    }, [selectedCourse, initialAssignmentId]); // Run when selectedCourse changes
+    }, [selectedCourse, initialAssignmentId]); 
 
     // --- 3. EFFECT: Load submissions when selectedAssignment changes (or is set by URL) ---
     useEffect(() => {
@@ -129,15 +126,13 @@ export function SubmissionsClient() {
         };
 
         fetchSubmissions();
-    }, [selectedAssignment]); // Run when selectedAssignment changes
+    }, [selectedAssignment]);
 
 
     // --- Handlers for manual dropdown changes ---
     const handleCourseChange = (event: SelectChangeEvent<string>) => {
         const courseId = event.target.value;
-        // Setting selectedCourse will trigger useEffect 2
         setSelectedCourse(courseId);
-        // Reset lower selections manually to avoid useEffect run conflicts
         setSelectedAssignment('');
         setAssignments([]);
         setSubmissions([]);
@@ -146,7 +141,6 @@ export function SubmissionsClient() {
 
     const handleAssignmentChange = (event: SelectChangeEvent<string>) => {
          const assignmentId = event.target.value;
-         // Setting selectedAssignment will trigger useEffect 3
          setSelectedAssignment(assignmentId);
          setSubmissions([]);
          setGradingStates({});
@@ -183,7 +177,7 @@ export function SubmissionsClient() {
             });
             alert('Grade saved successfully!');
             
-            // Update the main submissions state slightly to reflect save 
+            // Update the main submissions state to reflect save
              setSubmissions(prevSubs => prevSubs.map(sub =>
                  sub._id === submissionId
                  ? { ...sub, score: scoreValue, feedback: currentGradeState.feedback }
@@ -209,7 +203,6 @@ export function SubmissionsClient() {
                         value={selectedCourse}
                         onChange={handleCourseChange}
                         displayEmpty fullWidth
-                        // Disable if pre-selected from Hub
                         disabled={!!initialCourseId}
                         sx={{ color: '#eee', bgcolor: '#2d2d2d', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#555' }, '& .MuiSelect-icon': { color: '#aaa' } }}
                         MenuProps={{ PaperProps: { sx: { bgcolor: '#2d2d2d', color: '#eee' } } }}
@@ -231,7 +224,6 @@ export function SubmissionsClient() {
                             value={selectedAssignment}
                             onChange={handleAssignmentChange}
                             displayEmpty fullWidth
-                             // Disable if pre-selected from Hub
                             disabled={!!initialAssignmentId}
                             sx={{ color: '#eee', bgcolor: '#2d2d2d', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#555' }, '& .MuiSelect-icon': { color: '#aaa' } }}
                              MenuProps={{ PaperProps: { sx: { bgcolor: '#2d2d2d', color: '#eee' } } }}
@@ -265,12 +257,26 @@ export function SubmissionsClient() {
                                     Submitted: {new Date(s.createdAt).toLocaleString()}
                                 </Typography>
 
-                                {/* --- Display Submission Content & File --- */}
-                                {s.content && ( /* ... */ )}
+                                {/* --- Display Submission Content --- */}
+                                {s.content && (
+                                    <Box mt={1} mb={2}>
+                                        <Typography variant="subtitle1" sx={{ color: '#ccc', fontWeight: 'bold' }}>Answer:</Typography>
+                                        <Typography variant="body1" sx={{ color: '#eee', whiteSpace: 'pre-wrap' }}>{s.content}</Typography>
+                                    </Box>
+                                )}
+
+                                {/* --- Display Submitted File --- */}
                                 {s.file && s.file.url && (
                                     <Box mt={s.content ? 2 : 0} mb={2}>
                                         <Typography variant="subtitle1" sx={{ color: '#ccc', fontWeight: 'bold' }}>Uploaded File:</Typography>
-                                         <MuiLink href={s.file.url} target="_blank" rel="noopener noreferrer" download={s.file.name || true} sx={{ color: '#f39c12', fontWeight: 'bold' }}>
+                                         <MuiLink
+                                            href={s.file.url} // Cloudinary URL
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            download={s.file.name || true}
+                                            className={styles.fileLink}
+                                            sx={{ color: '#f39c12', fontWeight: 'bold' }}
+                                        >
                                             📄 {s.file.name || 'View File'}
                                         </MuiLink>
                                     </Box>
